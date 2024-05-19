@@ -10,9 +10,9 @@ except ModuleNotFoundError:
     import pytest
 
 BASE_DIR = os.environ.get("BASE_DIR", ".")
-EMUL_HTTP_ME = os.path.join(BASE_DIR, "bin/httpParser")
-EMUL_HTTP_PROF = os.path.join(BASE_DIR, "bin/httpparser")
-ALL_FILES = glob.glob(os.path.join(BASE_DIR, "../Tests/premier-jeu-test/get*[!'.out''.me']"))
+EMUL_HTTP_VALID = os.path.join(BASE_DIR, "bin/httpparser")
+EMUL_HTTP = os.path.join(BASE_DIR, "target/debug/http-parser")
+ALL_FILES = glob.glob(os.path.join(BASE_DIR, "tests/files/premier-jeu-test/get*[!'.out''.me']"))
 ALL_FILES.sort()
 
 
@@ -21,8 +21,14 @@ class TestHTTP:
     def testFiles(self, filename):
         name = os.path.splitext(filename)[0]
 
-        a = subprocess.run([EMUL_HTTP_ME, filename], capture_output=True, timeout=5).stdout
-        b = subprocess.run([EMUL_HTTP_PROF, filename], capture_output=True, timeout=5).stdout
+        a = subprocess.run([EMUL_HTTP, filename],
+                           capture_output=True,
+                           timeout=5,
+                           ).stdout
+        b = subprocess.run([EMUL_HTTP_VALID, filename],
+                           capture_output=True,
+                           timeout=5,
+                           ).stdout
 
         open(f"{name}.me", "wb").write(a)
         open(f"{name}.out", "wb").write(b)
@@ -42,7 +48,7 @@ class TestHTTP:
         i = j = 0
         while True:
             if (i == -1) ^ (j == -1):
-                pytest.fail(f"Error after Host Header", pytrace=False)
+                pytest.fail("Error after Host Header", pytrace=False)
 
             if i == len(a) and j == len(b):
                 break

@@ -9,8 +9,8 @@ except ModuleNotFoundError:
     import pytest
 
 BASE_DIR = os.environ.get("BASE_DIR", ".")
-EMUL_HTTP = os.path.join(BASE_DIR, "bin/httpParser")
-ALL_FILES = glob.glob(os.path.join(BASE_DIR, "../Tests/premier-jeu-test/get*[!'.out''.me']"))
+EMUL_HTTP = os.path.join(BASE_DIR, "target/debug/http-parser")
+ALL_FILES = glob.glob(os.path.join(BASE_DIR, "tests/files/premier-jeu-test/get*[!'.out''.me']"))
 ALL_FILES.sort()
 
 
