@@ -1,17 +1,47 @@
 mod node;
+mod parser;
+mod parsing_error;
+
+use parsing_error::ParsingError;
+use parser::parser;
 use node::Node;
 
+use std::env;
+use std::fs::File;
+use std::io::{Read, Error};
+
+
+fn read_file(filepath: &str) -> Result<Vec<u8>, Error> {
+    let mut file = File::open(filepath)?;
+    let mut content = Vec::new();
+    file.read_to_end(&mut content)?;
+
+    return Ok(content);
+}
+
 fn main() {
-    let file: String = "Hello World!".to_string();
-    let mut node: Node = Node::new(Box::new(file), "label1".to_string(), 0u16, 12u16);
-    node.add_child("label2".to_string(), 0u16, 5u16);
-    node.add_child("label3".to_string(), 5u16, 7u16);
+    let args: Vec<String> = env::args().collect();
 
-    println!("{:?}", node);
-    node.print_as_root();
+    if args.len() != 2 {
+        panic!("usage: http-parser <file>");
+    }
 
-    let string: String = "Hello World!".to_string();
-    let pointer: Box<String> = Box::new(string);
+    let filepath: &String = args.get(1).unwrap();
+    let content: Vec<u8>;
+    let content_length: u8;
 
-    println!("{}", *pointer);
+    if let Ok(m) = read_file(filepath) {
+        content_length = m.len() as u8;
+        content = m;
+    } else {
+        panic!("File problem");
+    }
+
+    let result: Result<Node, ParsingError> = parser(content, content_length);
+
+    match result {
+        Ok(root) => root.print_as_root(),
+        Err(e) => println!("{e}"),
+    }
+
 }
