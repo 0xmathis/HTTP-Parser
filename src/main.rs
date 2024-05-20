@@ -1,6 +1,7 @@
 mod node;
 mod parser;
 mod parsing_error;
+mod utils;
 
 use parsing_error::ParsingError;
 use parser::parser;
@@ -37,11 +38,11 @@ fn main() {
         panic!("File problem");
     }
 
-    let result: Result<Node, ParsingError> = parser(content, content_length);
+    let request_content: Box<Vec<u8>> = Box::new(content);
+    let result: Result<Node, ParsingError> = parser(&request_content, content_length);
 
     match result {
-        Ok(root) => root.print_as_root(),
+        Ok(root) => root.print_as_root(&request_content),
         Err(e) => println!("{e}"),
     }
-
 }

@@ -1,6 +1,9 @@
-#[derive(Debug, Clone)]
+use crate::utils;
+
+#[derive(Debug)]
+#[derive(Clone)]
+#[derive(PartialEq)]
 pub struct Node {
-    http_request: Box<Vec<u8>>,
     label: String,
     start: u8,
     length: u8,
@@ -8,9 +11,8 @@ pub struct Node {
 }
 
 impl Node {
-    pub fn new(http_request: Box<Vec<u8>>, label: String, start: u8, length: u8) -> Self {
+    pub fn new(label: String, start: u8, length: u8) -> Self {
         Self {
-            http_request,
             label,
             start,
             length,
@@ -18,9 +20,8 @@ impl Node {
         }
     }
 
-    pub fn empty(http_request: Box<Vec<u8>>) -> Self {
+    pub fn empty() -> Self {
         Self {
-            http_request,
             label: String::new(),
             start: 0,
             length: 0,
@@ -35,8 +36,27 @@ impl Node {
     }
 
     pub fn add_child(&mut self, label: String, start: u8, length: u8) -> () {
-        let child: Self = Self::new(self.http_request.clone(), label, start, length);
+        let child: Self = Self::new(label, start, length);
         self.children.push(child);
+    }
+
+    pub fn add_empty_child(&mut self) -> () {
+        let child: Self = Self::empty();
+        self.children.push(child);
+    }
+
+    // Destructors
+    
+    pub fn del(&mut self) -> () {
+        let children: &mut Vec<Node> = self.get_mut_children();
+        
+        while children.len() > 0 {
+            children.pop().unwrap().del();
+        }
+    }
+
+    pub fn del_last_child(&mut self) -> () {
+        self.get_mut_children().pop().unwrap().del();
     }
 
     // Setters
@@ -54,13 +74,6 @@ impl Node {
     }
     
     // Getters
-    
-    pub fn get_char(&self, index: usize) -> u8 {
-        match (*self.http_request).get(index) {
-            Some(i) => return *i,
-            None => panic!("Index out of bound"),
-        }
-    }
 
     pub fn get_label(&self) -> &String {
         return &self.label;
@@ -74,8 +87,12 @@ impl Node {
         return self.length;
     }
 
-    pub fn get_child(&self) -> &Vec<Self> {
+    pub fn get_children(&self) -> &Vec<Self> {
         return &self.children;
+    }
+
+    pub fn get_mut_children(&mut self) -> &mut Vec<Self> {
+        return &mut self.children;
     }
 
     pub fn get_mut_child(&mut self) -> &mut Vec<Self> {
@@ -94,11 +111,21 @@ impl Node {
         return &mut self.children[len - 1];
     }
 
-    pub fn print_as_root(&self) -> () {
-        self.print(0);
+    pub fn get_sum_length_children(&self) -> u8 {
+        let mut sum: u8 = 0;
+
+        for child in self.children.iter() {
+            sum += child.get_length();
+        }
+
+        sum
     }
 
-    fn print(&self, depth: u16) -> () {
+    pub fn print_as_root(&self, request_content: &Box<Vec<u8>>) -> () {
+        self.print(request_content, 0);
+    }
+
+    fn print(&self, request_content: &Box<Vec<u8>>, depth: u16) -> () {
         for _ in 0..4*depth {
             print!(" ");
         }
@@ -109,7 +136,7 @@ impl Node {
             print!("__");
         } else if self.get_length() > 9 {
             for i in 0..3 {
-                let c: u8 = self.get_char((self.get_start() + i) as usize);
+                let c: u8 = utils::get_request_char(request_content, (self.get_start() + i) as usize);
 
                 if c == b'\r' || c == b'\n' {
                     print!("_");
@@ -121,7 +148,7 @@ impl Node {
             print!("..");
         } else {
             for i in 0..self.get_length() {
-                let c: u8 = self.get_char((self.get_start() + i) as usize);
+                let c: u8 = utils::get_request_char(request_content, (self.get_start() + i) as usize);
 
                 if c == b'\r' || c == b'\n' {
                     print!("_");
@@ -134,7 +161,7 @@ impl Node {
         print!("\"\n");
 
         for child in self.children.iter() {
-            child.print(depth + 1)
+            child.print(request_content, depth + 1)
         }
     }
 }

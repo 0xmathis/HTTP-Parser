@@ -1,4 +1,9 @@
-use std::fmt;
+use std::fmt::{
+    Display,
+    Formatter,
+    Result,
+};
+use std::ops::Add;
 
 
 #[derive(Debug, Clone)]
@@ -14,8 +19,18 @@ impl ParsingError {
     }
 }
 
-impl fmt::Display for ParsingError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl Display for ParsingError {
+    fn fmt(&self, f: &mut Formatter) -> Result {
         write!(f, "Parsing error {{ message: {} }}", self.message)
+    }
+}
+
+impl Add for ParsingError {
+    type Output = Self;
+
+    fn add(self, other: Self) -> Self {
+        Self {
+            message: self.message + " | " + &other.message
+        }
     }
 }
