@@ -15,5 +15,7 @@ Cargo.lock
 
 
 # Added by cargo
-
 /target
+
+# python stuff
+__pycache__

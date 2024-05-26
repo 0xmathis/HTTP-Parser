@@ -21,7 +21,7 @@ impl ParsingError {
 
 impl Display for ParsingError {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        write!(f, "Parsing error {{ message: {} }}", self.message)
+        write!(f, "Parsing error {{ {} }}", self.message)
     }
 }
 
