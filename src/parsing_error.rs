@@ -6,7 +6,7 @@ use std::fmt::{
 use std::ops::Add;
 
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ParsingError {
     message: String
 }

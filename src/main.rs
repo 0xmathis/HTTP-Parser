@@ -12,6 +12,8 @@ use std::fs::File;
 use std::io::{Read, Error};
 
 
+// TODO: Enable user to store parsing tree in JSON file
+
 fn read_file(filepath: &str) -> Result<Vec<u8>, Error> {
     let mut file = File::open(filepath)?;
     let mut content = Vec::new();

@@ -1,6 +1,6 @@
 use crate::node::Node;
 use crate::parsing_error::ParsingError;
-use crate::utils::{self, get_request_char};
+use crate::utils;
 
 
 pub fn parser(http_request: &Box<Vec<u8>>, length: u8) -> Result<Node, ParsingError> {
@@ -12,8 +12,8 @@ pub fn parser(http_request: &Box<Vec<u8>>, length: u8) -> Result<Node, ParsingEr
         root.set_length(length);
     }
 
-    // root.print_as_root(http_request);
-
+    root.print_as_root(http_request);
+        
     match result {
         Ok(_) => { Ok(root) },
         Err(e) => { Err(e) },
@@ -301,7 +301,7 @@ fn detect_field_name(parent: &mut Node, http_request: &Box<Vec<u8>>, mut index: 
 fn detect_accept_encoding_header(parent: &mut Node, http_request: &Box<Vec<u8>>, mut index: u8) -> Result<(), ParsingError> {
     parent.add_empty_child();
     let node: &mut Node = parent.get_mut_last_child();
-    node.init(String::from("header_field"), index, 0);
+    node.init(String::from("Accept Encodings header"), index, 0);
 
     if utils::starts_with(b"Accept Encoding".to_vec(), http_request, index as usize) {
         node.add_child("case_insensitive_string".to_string(), index, 15);
@@ -367,7 +367,7 @@ fn detect_accept_encoding(parent: &mut Node, http_request: &Box<Vec<u8>>, mut in
 fn detect_weight(parent: &mut Node, http_request: &Box<Vec<u8>>, mut index: u8) -> Result<(), ParsingError> {
     parent.add_empty_child();
     let node: &mut Node = parent.get_mut_last_child();
-    node.init(String::from("Accept_Encoding"), index, 0);
+    node.init(String::from("weight"), index, 0);
 
     match detect_ows(node, http_request, index) {
         Ok(()) => index += node.get_last_child().get_length(),
@@ -416,7 +416,7 @@ fn detect_weight(parent: &mut Node, http_request: &Box<Vec<u8>>, mut index: u8) 
 fn detect_qvalue(parent: &mut Node, http_request: &Box<Vec<u8>>, mut index: u8) -> Result<(), ParsingError> {
     parent.add_empty_child();
     let node: &mut Node = parent.get_mut_last_child();
-    node.init(String::from("Accept_Encoding"), index, 0);
+    node.init(String::from("qvalue"), index, 0);
     let mut c: u8 = utils::get_request_char(http_request, index as usize);
 
     if c == b'0' {
@@ -485,7 +485,7 @@ fn detect_qvalue(parent: &mut Node, http_request: &Box<Vec<u8>>, mut index: u8) 
 fn detect_codings(parent: &mut Node, http_request: &Box<Vec<u8>>, mut index: u8) -> Result<(), ParsingError> {
     parent.add_empty_child();
     let node: &mut Node = parent.get_mut_last_child();
-    node.init(String::from("Accept_Encoding"), index, 0);
+    node.init(String::from("codings"), index, 0);
 
     if let Ok(()) = detect_content_codings(node, http_request, index) {
         index += node.get_last_child().get_length();
@@ -507,7 +507,7 @@ fn detect_codings(parent: &mut Node, http_request: &Box<Vec<u8>>, mut index: u8)
 fn detect_content_codings(parent: &mut Node, http_request: &Box<Vec<u8>>, index: u8) -> Result<(), ParsingError> {
     parent.add_empty_child();
     let node: &mut Node = parent.get_mut_last_child();
-    node.init(String::from("Accept_Encoding"), index, 0);
+    node.init(String::from("content codings"), index, 0);
 
     if let Err(e) = detect_token(node, http_request, index) {
         return Err(ParsingError::new(String::from("No token detected")) + e);
@@ -520,7 +520,7 @@ fn detect_content_codings(parent: &mut Node, http_request: &Box<Vec<u8>>, index:
 fn detect_accept_header(parent: &mut Node, http_request: &Box<Vec<u8>>, mut index: u8) -> Result<(), ParsingError> {
     parent.add_empty_child();
     let node: &mut Node = parent.get_mut_last_child();
-    node.init(String::from("header_field"), index, 0);
+    node.init(String::from("Accept header"), index, 0);
 
     if utils::starts_with(b"Accept".to_vec(), http_request, index as usize) {
         node.add_child("case_insensitive_string".to_string(), index, 6);
@@ -578,15 +578,31 @@ fn detect_accept(parent: &mut Node, http_request: &Box<Vec<u8>>, mut index: u8) 
     }
 
     loop {
-        if utils::get_request_char(http_request, index as usize) == b',' {
+        if detect_ows(node, http_request, index) == Ok(()) && utils::get_request_char(http_request, (index + node.get_last_child().get_length()) as usize) == b',' {
+            index += node.get_last_child().get_length();
             node.add_child("case_insensitive_string".to_string(), index, 1);
             index += node.get_last_child().get_length();
-        } else if let Ok(()) = detect_ows(node, http_request, index) {
-            if utils::get_request_char(http_request, index as usize) == b',' {
-            } else {
-            }
+        } else if utils::get_request_char(http_request, index as usize) == b',' {
+            node.add_child("case_insensitive_string".to_string(), index, 1);
+            index += node.get_last_child().get_length();
         } else {
+            if node.get_last_child().get_label() == "OWS" {
+                node.del_last_child();
+            }
+
             break;
+        }
+
+        if let Ok(()) = detect_ows(node, http_request, index) {
+            index += node.get_last_child().get_length();
+        }
+
+        if let Ok(()) = detect_media_range(node, http_request, index) {
+            index += node.get_last_child().get_length();
+
+            if let Ok(()) = detect_accept_params(node, http_request, index) {
+                index += node.get_last_child().get_length();
+            }
         }
     }
 
@@ -595,11 +611,177 @@ fn detect_accept(parent: &mut Node, http_request: &Box<Vec<u8>>, mut index: u8) 
 }
 
 fn detect_accept_params(parent: &mut Node, http_request: &Box<Vec<u8>>, mut index: u8) -> Result<(), ParsingError> {
-    todo!()
+    parent.add_empty_child();
+    let node: &mut Node = parent.get_mut_last_child();
+    node.init(String::from("accept_params"), index, 0);
+
+    match detect_weight(node, http_request, index) {
+        Ok(()) => index += node.get_last_child().get_length(),
+        Err(e) => {
+            parent.del_last_child();
+            return Err(ParsingError::new(String::from("No weight detected")) + e);
+        }
+    }
+
+    loop {
+        match detect_accept_ext(node, http_request, index) {
+            Ok(()) => index += node.get_last_child().get_length(),
+            Err(_) => {
+                break;
+            }
+        }
+    }
+
+    node.set_length(node.get_sum_length_children());
+    Ok(())
+}
+
+fn detect_accept_ext(parent: &mut Node, http_request: &Box<Vec<u8>>, mut index: u8) -> Result<(), ParsingError> {
+    parent.add_empty_child();
+    let node: &mut Node = parent.get_mut_last_child();
+    node.init(String::from("media_range"), index, 0);
+
+    if detect_ows(node, http_request, index) == Ok(()) && utils::get_request_char(http_request, (index + node.get_last_child().get_length()) as usize) == b';' {
+        index += node.get_last_child().get_length();
+        node.add_child("case_insensitive_string".to_string(), index, 1);
+        index += node.get_last_child().get_length();
+    } else if utils::get_request_char(http_request, index as usize) == b';' {
+        node.add_child("case_insensitive_string".to_string(), index, 1);
+        index += node.get_last_child().get_length();
+    } else {
+        parent.del_last_child();
+        return Err(ParsingError::new(String::from("No accept ext component detected")));
+    }
+
+    if let Ok(()) = detect_ows(node, http_request, index) {
+        index += node.get_last_child().get_length();
+    }
+
+    match detect_token(node, http_request, index) {
+        Ok(()) => index += node.get_last_child().get_length(),
+        Err(e) => {
+            parent.del_last_child();
+            return Err(ParsingError::new(String::from("No token detected")) + e);
+        }
+    }
+
+    if utils::get_request_char(http_request, index as usize) == b'='  {
+        node.add_child("case_insensitive_string".to_string(), index, 1);
+        index += node.get_last_child().get_length();
+
+        if let Ok(()) = detect_token(node, http_request, index) {
+            index += node.get_last_child().get_length();
+        } else if let Ok(()) = detect_token(node, http_request, index) {
+            index += node.get_last_child().get_length();
+        } else {
+            parent.del_last_child();
+            return Err(ParsingError::new(String::from("No accept ext component detected")));
+        }
+    }
+
+    node.set_length(node.get_sum_length_children());
+    Ok(())
 }
 
 fn detect_media_range(parent: &mut Node, http_request: &Box<Vec<u8>>, mut index: u8) -> Result<(), ParsingError> {
+    parent.add_empty_child();
+    let node: &mut Node = parent.get_mut_last_child();
+    node.init(String::from("media_range"), index, 0);
+
+    if utils::starts_with(b"*/*".to_vec(), http_request, index as usize) {
+        node.add_child("case_insensitive_string".to_string(), index, 3);
+        index += node.get_last_child().get_length();
+    } else if let Ok(()) = detect_type(node, http_request, index) {
+        index += node.get_last_child().get_length();
+
+        if utils::get_request_char(http_request, index as usize) == b'/' {
+            index += node.get_last_child().get_length();
+        } else {
+            parent.del_last_child();
+            return Err(ParsingError::new(String::from("No '/' detected")));
+        }
+
+        match detect_subtype(node, http_request, index) {
+            Ok(()) => index += node.get_last_child().get_length(),
+            Err(e) => {
+                parent.del_last_child();
+                return Err(ParsingError::new(String::from("No subtype detected")) + e);
+            }
+        }
+    } else {
+        parent.del_last_child();
+        return Err(ParsingError::new(String::from("No media range component detected")));
+    }
+
+    loop {
+        if detect_ows(node, http_request, index) == Ok(()) && utils::get_request_char(http_request, (index + node.get_last_child().get_length()) as usize) == b',' {
+            index += node.get_last_child().get_length();
+            node.add_child("case_insensitive_string".to_string(), index, 1);
+            index += node.get_last_child().get_length();
+        } else if utils::get_request_char(http_request, index as usize) == b',' {
+            node.add_child("case_insensitive_string".to_string(), index, 1);
+            index += node.get_last_child().get_length();
+        } else {
+            if node.get_last_child().get_label() == "OWS" {
+                node.del_last_child();
+            }
+
+            break;
+        }
+
+        if let Ok(()) = detect_ows(node, http_request, index) {
+            index += node.get_last_child().get_length();
+        }
+
+        match detect_parameter(node, http_request, index) {
+            Ok(()) => index += node.get_last_child().get_length(),
+            Err(e) => {
+                parent.del_last_child();
+                return Err(ParsingError::new(String::from("No parameter detected")) + e);
+            }
+        }
+    }
+
+    node.set_length(node.get_sum_length_children());
+    Ok(())
+}
+
+fn detect_parameter(parent: &mut Node, http_request: &Box<Vec<u8>>, mut index: u8) -> Result<(), ParsingError> {
     todo!()
+}
+
+fn detect_type(parent: &mut Node, http_request: &Box<Vec<u8>>, mut index: u8) -> Result<(), ParsingError> {
+    parent.add_empty_child();
+    let node: &mut Node = parent.get_mut_last_child();
+    node.init(String::from("type"), index, 0);
+
+    match detect_token(node, http_request, index) {
+        Ok(()) => index += node.get_last_child().get_length(),
+        Err(e) => {
+            parent.del_last_child();
+            return Err(ParsingError::new(String::from("No token detected")) + e);
+        }
+    }
+
+    node.set_length(node.get_sum_length_children());
+    Ok(())
+}
+
+fn detect_subtype(parent: &mut Node, http_request: &Box<Vec<u8>>, mut index: u8) -> Result<(), ParsingError> {
+    parent.add_empty_child();
+    let node: &mut Node = parent.get_mut_last_child();
+    node.init(String::from("subtype"), index, 0);
+
+    match detect_token(node, http_request, index) {
+        Ok(()) => index += node.get_last_child().get_length(),
+        Err(e) => {
+            parent.del_last_child();
+            return Err(ParsingError::new(String::from("No token detected")) + e);
+        }
+    }
+
+    node.set_length(node.get_sum_length_children());
+    Ok(())
 }
 
 fn detect_accept_language_header(parent: &mut Node, http_request: &Box<Vec<u8>>, mut index: u8) -> Result<(), ParsingError> {
@@ -609,7 +791,7 @@ fn detect_accept_language_header(parent: &mut Node, http_request: &Box<Vec<u8>>,
 fn detect_user_agent_header(parent: &mut Node, http_request: &Box<Vec<u8>>, mut index: u8) -> Result<(), ParsingError> {
     parent.add_empty_child();
     let node: &mut Node = parent.get_mut_last_child();
-    node.init(String::from("header_field"), index, 0);
+    node.init(String::from("User Agent header"), index, 0);
 
     if utils::starts_with(b"User-Agent".to_vec(), http_request, index as usize) {
         node.add_child("case_insensitive_string".to_string(), index, 10);
@@ -648,7 +830,251 @@ fn detect_user_agent_header(parent: &mut Node, http_request: &Box<Vec<u8>>, mut 
 }
 
 fn detect_host_header(parent: &mut Node, http_request: &Box<Vec<u8>>, mut index: u8) -> Result<(), ParsingError> {
-    return Err(ParsingError::new(String::from("Not implemented")));
+    parent.add_empty_child();
+    let node: &mut Node = parent.get_mut_last_child();
+    node.init(String::from("Host header"), index, 0);
+
+    if utils::starts_with(b"Host".to_vec(), http_request, index as usize) {
+        node.add_child("case_insensitive_string".to_string(), index, 4);
+        index += node.get_last_child().get_length();
+    } else {
+        parent.del_last_child();
+        return Err(ParsingError::new(String::from("No Host string detected")));
+    }
+
+    if utils::get_request_char(http_request, index as usize) == b':' {
+        node.add_child("case_insensitive_string".to_string(), index, 1);
+        index += node.get_last_child().get_length();
+    } else {
+        parent.del_last_child();
+        return Err(ParsingError::new(String::from("No : detected")));
+    }
+
+    if let Ok(()) = detect_ows(node, http_request, index) {
+        index += node.get_last_child().get_length();
+    }
+
+    if let Ok(()) = detect_host(node, http_request, index) {
+        index += node.get_last_child().get_length();
+
+        if node.get_last_child().get_length() == 0 {
+            node.del_last_child();
+        } else {
+            index += node.get_last_child().get_length();
+        }
+    } else {
+        parent.del_last_child();
+        return Err(ParsingError::new(String::from("No User Agent detected"))); 
+    }
+
+    if let Ok(()) = detect_ows(node, http_request, index) {
+        index += node.get_last_child().get_length();
+    }
+
+    node.set_length(node.get_sum_length_children());
+    Ok(())
+}
+
+fn detect_host(parent: &mut Node, http_request: &Box<Vec<u8>>, mut index: u8) -> Result<(), ParsingError> {
+    parent.add_empty_child();
+    let node: &mut Node = parent.get_mut_last_child();
+    node.init(String::from("Host"), index, 0);
+
+    match detect_uri_host(node, http_request, index) {
+        Ok(()) => index += node.get_last_child().get_length(),
+        Err(e) => {
+            parent.del_last_child();
+            return Err(ParsingError::new(String::from("No uri host detected")) + e); 
+        }
+    }
+
+    if utils::get_request_char(http_request, index as usize) == b':' {
+        node.add_child("case_insensitive_string".to_string(), index, 1);
+        index += node.get_last_child().get_length();
+
+        match detect_port(node, http_request, index) {
+            Ok(()) => index += node.get_last_child().get_length(),
+            Err(e) => {
+                parent.del_last_child();
+                return Err(ParsingError::new(String::from("No port detected")) + e); 
+            }
+        }
+    }
+
+    node.set_length(node.get_sum_length_children());
+    Ok(())
+}
+
+fn detect_uri_host(parent: &mut Node, http_request: &Box<Vec<u8>>, mut index: u8) -> Result<(), ParsingError> {
+    parent.add_empty_child();
+    let node: &mut Node = parent.get_mut_last_child();
+    node.init(String::from("uri_host"), index, 0);
+    
+    match detect_host_(node, http_request, index) {
+        Ok(()) => index += node.get_last_child().get_length(),
+        Err(e) => {
+            parent.del_last_child();
+            return Err(ParsingError::new(String::from("No host detected")) + e); 
+        }
+    }
+
+    if node.get_sum_length_children() == 0 {
+        parent.del_last_child();
+        return Err(ParsingError::new(String::from("No uri host detected"))); 
+    }
+
+    node.set_length(node.get_sum_length_children());
+    Ok(())
+}
+
+fn detect_host_(parent: &mut Node, http_request: &Box<Vec<u8>>, mut index: u8) -> Result<(), ParsingError> {
+    parent.add_empty_child();
+    let node: &mut Node = parent.get_mut_last_child();
+    node.init(String::from("host"), index, 0);
+
+    if let Ok(()) = detect_ip_literal(node, http_request, index) {
+        index += node.get_last_child().get_length();
+    } else if let Ok(()) = detect_ipv4address(node, http_request, index) {
+        index += node.get_last_child().get_length();
+    } else if let Ok(()) = detect_reg_name(node, http_request, index) {
+        index += node.get_last_child().get_length();
+    } else {
+        parent.del_last_child();
+        return Err(ParsingError::new(String::from("No host component detected"))); 
+    }
+
+    node.set_length(node.get_sum_length_children());
+    Ok(())
+}
+
+fn detect_reg_name(parent: &mut Node, http_request: &Box<Vec<u8>>, mut index: u8) -> Result<(), ParsingError> {
+    parent.add_empty_child();
+    let node: &mut Node = parent.get_mut_last_child();
+    node.init(String::from("host"), index, 0);
+    let mut count: u8 = 0;
+
+    loop {
+        if let Ok(()) = detect_unreserved(node, http_request, index) {
+            index += node.get_last_child().get_length();
+            count += 1;
+        } else if let Ok(()) = detect_pct_encoded(node, http_request, index) {
+            index += node.get_last_child().get_length();
+            count += 1;
+        } else if let Ok(()) = detect_sub_delims(node, http_request, index) {
+            index += node.get_last_child().get_length();
+            count += 1;
+        } else {
+            break;
+        }
+    }
+
+    if count == 0 {
+        parent.del_last_child();
+        return Err(ParsingError::new(String::from("No reg name component detected"))); 
+    }
+
+    node.set_length(node.get_sum_length_children());
+    Ok(())
+}
+
+fn detect_ipv4address(parent: &mut Node, http_request: &Box<Vec<u8>>, mut index: u8) -> Result<(), ParsingError> {
+    parent.add_empty_child();
+    let node: &mut Node = parent.get_mut_last_child();
+    node.init(String::from("IPv4address"), index, 0);
+
+    for i in 0..3 {
+        match detect_dec_octet(node, http_request, index) {
+            Ok(()) => index += node.get_last_child().get_length(),
+            Err(e) => {
+                parent.del_last_child();
+                return Err(ParsingError::new(String::from("No reg name component detected")) + e);
+            }
+        }
+
+        if utils::get_request_char(http_request, index as usize) == b'.' {
+            node.add_child("case_insensitive_string".to_string(), index, 1);
+            index += node.get_last_child().get_length();
+        } else {
+            parent.del_last_child();
+            return Err(ParsingError::new(String::from("No reg name component detected")));
+        }
+    }
+
+    match detect_dec_octet(node, http_request, index) {
+        Ok(()) => index += node.get_last_child().get_length(),
+        Err(e) => {
+            parent.del_last_child();
+            return Err(ParsingError::new(String::from("No reg name component detected")) + e);
+        }
+    }
+
+
+    node.set_length(node.get_sum_length_children());
+    Ok(())
+}
+
+fn detect_dec_octet(parent: &mut Node, http_request: &Box<Vec<u8>>, mut index: u8) -> Result<(), ParsingError> {
+    parent.add_empty_child();
+    let node: &mut Node = parent.get_mut_last_child();
+    node.init(String::from("dec_octet"), index, 0);
+    let c0: u8 = utils::get_request_char(http_request, index as usize);
+    let c1: u8 = utils::get_request_char(http_request, (index + 1) as usize);
+    let c2: u8 = utils::get_request_char(http_request, (index + 2) as usize);
+
+    if c0 == b'2' && c1 == b'5' && b'0' <= c2 && c2 <= b'5' {
+        node.add_child("case_insensitive_string".to_string(), index, 2);
+        node.add_child("__digit".to_string(), index, 1);
+    } else if c0 == b'2' && b'0' <= c1 && c1 <= b'4' && detect_digit(node, http_request, index + 2) == Ok(()) {
+        node.add_child("case_insensitive_string".to_string(), index, 1);
+        node.add_child("__range".to_string(), index + 1, 1);
+        node.add_child("__digit".to_string(), index + 2, 1);
+    } else if c0 == b'1' && detect_digit(node, http_request, index + 1) == Ok(()) && detect_digit(node, http_request, index + 2) == Ok(()) {
+        node.add_child("case_insensitive_string".to_string(), index, 1);
+        node.add_child("__digit".to_string(), index + 1, 1);
+        node.add_child("__digit".to_string(), index + 1, 1);
+    } else if  b'1' <= c0 && c0 <= b'9' && detect_digit(node, http_request, index + 1) == Ok(()) {
+        node.add_child("__range".to_string(), index, 1);
+        node.add_child("__digit".to_string(), index, 1);
+    } else if  detect_digit(node, http_request, index) == Ok(()) {
+        node.add_child("__digit".to_string(), index, 1);
+    } else {
+        parent.del_last_child();
+        return Err(ParsingError::new(String::from("No dec octet detected"))); 
+    }
+
+    node.set_length(node.get_sum_length_children());
+    Ok(())
+}
+
+fn detect_ip_literal(parent: &mut Node, http_request: &Box<Vec<u8>>, mut index: u8) -> Result<(), ParsingError> {
+    todo!()
+}
+
+fn detect_port(parent: &mut Node, http_request: &Box<Vec<u8>>, mut index: u8) -> Result<(), ParsingError> {
+    parent.add_empty_child();
+    let node: &mut Node = parent.get_mut_last_child();
+    node.init(String::from("port"), index, 0);
+    let mut count: u8 = 0;
+
+    loop {
+        match detect_digit(node, http_request, index) {
+            Ok(()) => {
+                node.add_child("__digit".to_string(), index, 1);
+                index += node.get_last_child().get_length();
+                count += 1;
+
+            }
+            Err(_) => break
+        }
+    }
+
+    if count == 0 {
+        parent.del_last_child();
+        return Err(ParsingError::new(String::from("No port detected"))); 
+    }
+
+    node.set_length(node.get_sum_length_children());
+    Ok(())
 }
 
 fn detect_expect_header(parent: &mut Node, http_request: &Box<Vec<u8>>, mut index: u8) -> Result<(), ParsingError> {
