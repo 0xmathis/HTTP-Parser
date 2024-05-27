@@ -982,7 +982,7 @@ fn detect_ipv4address(parent: &mut Node, http_request: &Box<Vec<u8>>, mut index:
     let node: &mut Node = parent.get_mut_last_child();
     node.init(String::from("IPv4address"), index, 0);
 
-    for i in 0..3 {
+    for _ in 0..3 {
         match detect_dec_octet(node, http_request, index) {
             Ok(()) => index += node.get_last_child().get_length(),
             Err(e) => {
@@ -1047,7 +1047,250 @@ fn detect_dec_octet(parent: &mut Node, http_request: &Box<Vec<u8>>, mut index: u
 }
 
 fn detect_ip_literal(parent: &mut Node, http_request: &Box<Vec<u8>>, mut index: u8) -> Result<(), ParsingError> {
-    todo!()
+    parent.add_empty_child();
+    let node: &mut Node = parent.get_mut_last_child();
+    node.init(String::from("dec_octet"), index, 0);
+
+    if utils::get_request_char(http_request, index as usize) == b'[' {
+        node.add_child("case_insensitive_string".to_string(), index, 1);
+        index += node.get_last_child().get_length();
+    } else {
+        parent.del_last_child();
+        return Err(ParsingError::new(String::from("No '[' detected"))); 
+    }
+
+    if let Ok(()) = detect_ipv6address(node, http_request, index) {
+        index += node.get_last_child().get_length();
+    } else if let Ok(()) = detect_ipvfuture(node, http_request, index) {
+        index += node.get_last_child().get_length();
+    } else {
+        parent.del_last_child();
+        return Err(ParsingError::new(String::from("No ip literal component detected"))); 
+    }
+
+    if utils::get_request_char(http_request, index as usize) == b']' {
+        node.add_child("case_insensitive_string".to_string(), index, 1);
+        index += node.get_last_child().get_length();
+    } else {
+        parent.del_last_child();
+        return Err(ParsingError::new(String::from("No ']' detected"))); 
+    }
+
+    node.set_length(node.get_sum_length_children());
+    Ok(())
+}
+
+fn detect_ipvfuture(parent: &mut Node, http_request: &Box<Vec<u8>>, mut index: u8) -> Result<(), ParsingError> {
+    parent.add_empty_child();
+    let node: &mut Node = parent.get_mut_last_child();
+    node.init(String::from("IPvFuture"), index, 0);
+    let mut count: u8;
+    let c: u8 = utils::get_request_char(http_request, index as usize);
+
+    if c == b'v' || c == b'V' {
+        node.add_child("case_insensitive_string".to_string(), index, 1);
+        index += node.get_last_child().get_length();
+    } else {
+        parent.del_last_child();
+        return Err(ParsingError::new(String::from("No '[' detected"))); 
+    }
+
+    count = 0;
+
+    loop {
+        match detect_hexdig(node, http_request, index) {
+            Ok(()) => index += node.get_last_child().get_length(),
+            Err(_) => break
+        }
+
+        count += 1;
+    }
+
+    if count < 1 {
+        parent.del_last_child();
+        return Err(ParsingError::new(String::from("No ipvfuture component detected"))); 
+    }
+
+    count = 0;
+
+    loop {
+        if let Ok(()) = detect_unreserved(node, http_request, index) {
+            index += node.get_last_child().get_length();
+        } else if let Ok(()) = detect_sub_delims(node, http_request, index) {
+            index += node.get_last_child().get_length();
+        } else if utils::get_request_char(http_request, index as usize) == b':' {
+            node.add_child("case_insensitive_string".to_string(), index, 1);
+            index += node.get_last_child().get_length();
+        } else {
+            break;
+        }
+
+        count += 1;
+    }
+
+    if count < 1 {
+        parent.del_last_child();
+        return Err(ParsingError::new(String::from("No ipvfuture component detected"))); 
+    }
+
+    node.set_length(node.get_sum_length_children());
+    Ok(())
+}
+
+fn detect_ipv6address(parent: &mut Node, http_request: &Box<Vec<u8>>, mut index: u8) -> Result<(), ParsingError> {
+    parent.add_empty_child();
+    let node: &mut Node = parent.get_mut_last_child();
+    node.init(String::from("IPv6address"), index, 0);
+    let mut count: u8 = 0;
+
+    loop {
+        if count == 6 {
+            break;
+        }
+
+        match detect_h16(node, http_request, index) {
+            Ok(()) => index += node.get_last_child().get_length(),
+            Err(_) => break
+        }
+
+        count += 1;
+
+        if utils::starts_with(b"::".to_vec(), http_request, index as usize) {
+            break;
+        }
+
+        if utils::get_request_char(http_request, index as usize) == b':' {
+            node.add_child("case_insensitive_string".to_string(), index, 1);
+            index += node.get_last_child().get_length();
+        } else {
+            parent.del_last_child();
+            return Err(ParsingError::new(String::from("No ipv6address component detected"))); 
+        }
+    }
+
+    if count == 6 {
+        if let Ok(()) = detect_ls32(node, http_request, index) {
+            index += node.get_last_child().get_length();
+        } else if let Ok(()) = detect_h16(node, http_request, index) {
+            index += node.get_last_child().get_length();
+
+            if utils::starts_with(b"::".to_vec(), http_request, index as usize) {
+                node.add_child("case_insensitive_string".to_string(), index, 2);
+                index += node.get_last_child().get_length();
+            } else {
+                parent.del_last_child();
+                return Err(ParsingError::new(String::from("No ipv6address component detected"))); 
+            }
+        } else if utils::starts_with(b"::".to_vec(), http_request, index as usize) {
+            node.add_child("case_insensitive_string".to_string(), index, 2);
+            index += node.get_last_child().get_length();
+
+            if let Ok(()) = detect_h16(node, http_request, index) {
+                index += node.get_last_child().get_length();
+            }
+        } else {
+            parent.del_last_child();
+            return Err(ParsingError::new(String::from("No ipv6address component detected"))); 
+        }
+    } else if utils::starts_with(b"::".to_vec(), http_request, index as usize) {
+        node.add_child("case_insensitive_string".to_string(), index, 2);
+        index += node.get_last_child().get_length();
+
+        loop {
+            if detect_ls32(node, http_request, index) == Ok(()) && utils::get_request_char(http_request, (index + node.get_last_child().get_length()) as usize) == b']' {
+                if count > 5 {
+                    parent.del_last_child();
+                    return Err(ParsingError::new(String::from("No ipv6address component detected"))); 
+                }
+
+                index += node.get_last_child().get_length();
+                break
+            } else if node.get_last_child().get_label() == "ls32" {
+                node.del_last_child();
+            }
+
+            if let Ok(()) = detect_h16(node, http_request, index) {
+                index += node.get_last_child().get_length();
+                count += 1;
+
+                if utils::get_request_char(http_request, index as usize) == b']' {
+                    break;
+                }
+            } else {
+                break;
+            }
+
+            if utils::get_request_char(http_request, index as usize) == b':' {
+                node.add_child("case_insensitive_string".to_string(), index, 1);
+                index += node.get_last_child().get_length();
+            } else {
+                parent.del_last_child();
+                return Err(ParsingError::new(String::from("No ipv6address component detected"))); 
+            }
+        }
+    }
+
+    node.set_length(node.get_sum_length_children());
+    Ok(())
+}
+
+fn detect_h16(parent: &mut Node, http_request: &Box<Vec<u8>>, mut index: u8) -> Result<(), ParsingError> {
+    parent.add_empty_child();
+    let node: &mut Node = parent.get_mut_last_child();
+    node.init(String::from("h16"), index, 0);
+    let mut count: u8 = 0;
+
+    loop {
+        match detect_hexdig(node, http_request, index) {
+            Ok(()) => {
+                index += node.get_last_child().get_length();
+                count += 1;
+
+            }
+            Err(_) => break
+        }
+    }
+
+    if count < 1 || 4 < count {
+        parent.del_last_child();
+        return Err(ParsingError::new(String::from("No h16 component detected"))); 
+    }
+
+    node.set_length(node.get_sum_length_children());
+    Ok(())
+}
+
+fn detect_ls32(parent: &mut Node, http_request: &Box<Vec<u8>>, mut index: u8) -> Result<(), ParsingError> {
+    parent.add_empty_child();
+    let node: &mut Node = parent.get_mut_last_child();
+    node.init(String::from("ls32"), index, 0);
+
+    if  let Ok(()) = detect_ipv4address(node, http_request, index) {
+        index += node.get_last_child().get_length();
+    } else if let Ok(()) = detect_h16(node, http_request, index) {
+        index += node.get_last_child().get_length();
+
+        if utils::get_request_char(http_request, index as usize) == b':' {
+            node.add_child("case_insensitive_string".to_string(), index, 1);
+            index += node.get_last_child().get_length();
+
+            if let Ok(()) = detect_h16(node, http_request, index) {
+                index += node.get_last_child().get_length();
+            } else {
+                parent.del_last_child();
+                return Err(ParsingError::new(String::from("No port detected"))); 
+            }
+        } else {
+            parent.del_last_child();
+            return Err(ParsingError::new(String::from("No port detected"))); 
+        }
+    } else {
+        parent.del_last_child();
+        return Err(ParsingError::new(String::from("No port detected"))); 
+    }
+
+    node.set_length(node.get_sum_length_children());
+    Ok(())
 }
 
 fn detect_port(parent: &mut Node, http_request: &Box<Vec<u8>>, mut index: u8) -> Result<(), ParsingError> {
@@ -1098,7 +1341,82 @@ fn detect_content_length_header(parent: &mut Node, http_request: &Box<Vec<u8>>, 
 }
 
 fn detect_connection_header(parent: &mut Node, http_request: &Box<Vec<u8>>, mut index: u8) -> Result<(), ParsingError> {
-    return Err(ParsingError::new(String::from("Not implemented")));
+    parent.add_empty_child();
+    let node: &mut Node = parent.get_mut_last_child();
+    node.init(String::from("Connection header"), index, 0);
+
+    if utils::starts_with(b"Connection".to_vec(), http_request, index as usize) {
+        node.add_child("case_insensitive_string".to_string(), index, 10);
+        index += node.get_last_child().get_length();
+    } else {
+        parent.del_last_child();
+        return Err(ParsingError::new(String::from("No Connection string detected")));
+    }
+
+    if utils::get_request_char(http_request, index as usize) == b':' {
+        node.add_child("case_insensitive_string".to_string(), index, 1);
+        index += node.get_last_child().get_length();
+    } else {
+        parent.del_last_child();
+        return Err(ParsingError::new(String::from("No : detected")));
+    }
+
+    if let Ok(()) = detect_ows(node, http_request, index) {
+        index += node.get_last_child().get_length();
+    }
+
+    match detect_connection(node, http_request, index) {
+        Ok(()) => index += node.get_last_child().get_length(),
+        Err(e) => { 
+            parent.del_last_child();
+            return Err(ParsingError::new(String::from("No Connection detected")) + e); 
+        }
+    }
+
+    if let Ok(()) = detect_ows(node, http_request, index) {
+        index += node.get_last_child().get_length();
+    }
+
+    node.set_length(node.get_sum_length_children());
+    Ok(())
+}
+
+fn detect_connection(parent: &mut Node, http_request: &Box<Vec<u8>>, mut index: u8) -> Result<(), ParsingError> {
+    parent.add_empty_child();
+    let node: &mut Node = parent.get_mut_last_child();
+    node.init("Connection".to_string(), index, 0);
+
+    loop {
+        if utils::get_request_char(http_request, index as usize) == b',' {
+            node.add_child("case_insensitive_string".to_string(), index, 1);
+            index += node.get_last_child().get_length();
+        } else {
+            break;
+        }
+
+        if let Ok(()) = detect_ows(node, http_request, index) {
+            index += node.get_last_child().get_length();
+        }
+    }
+
+    match detect_connection_option(node, http_request, index) {
+        Ok(()) => index += node.get_last_child().get_length(),
+        Err(e) => {
+            parent.del_last_child();
+            return Err(ParsingError::new(String::from("No connection option detected")) + e);
+        }
+    }
+
+    loop {
+        todo!();
+    }
+
+    node.set_length(node.get_sum_length_children());
+    Ok(())
+}
+
+fn detect_connection_option(node: &mut Node, http_request: &Vec<u8, Global>, index: u8) -> Result<(), ParsingError> {
+    todo!()
 }
 
 fn detect_user_agent(parent: &mut Node, http_request: &Box<Vec<u8>>, mut index: u8) -> Result<(), ParsingError> {
