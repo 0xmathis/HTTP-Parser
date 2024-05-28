@@ -1415,7 +1415,7 @@ fn detect_connection(parent: &mut Node, http_request: &Box<Vec<u8>>, mut index: 
     Ok(())
 }
 
-fn detect_connection_option(node: &mut Node, http_request: &Vec<u8, Global>, index: u8) -> Result<(), ParsingError> {
+fn detect_connection_option(parent: &mut Node, http_request: &Box<Vec<u8>>, mut index: u8) -> Result<(), ParsingError> {
     todo!()
 }
 
