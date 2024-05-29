@@ -146,6 +146,16 @@ impl Node {
             }
 
             print!("..");
+
+            for i in self.get_length() - 3..self.get_length() {
+                let c: u8 = utils::get_request_char(request_content, (self.get_start() + i) as usize);
+
+                if c == b'\r' || c == b'\n' {
+                    print!("_");
+                } else {
+                    print!("{}", c as char);
+                }
+            }
         } else {
             for i in 0..self.get_length() {
                 let c: u8 = utils::get_request_char(request_content, (self.get_start() + i) as usize);

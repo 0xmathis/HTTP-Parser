@@ -1,11 +1,11 @@
 pub fn starts_with(start: Vec<u8>, content: &Box<Vec<u8>>, index: usize) -> bool {
     for i in 0..start.len() {
-        if start.get(i) == content.get(index + i) {
-            return true;
+        if start.get(i) != content.get(index + i) {
+            return false;
         }
     }
 
-    false
+    true
 }
 
 pub fn is_in(c: u8, content: Vec<u8>) -> bool {
@@ -19,6 +19,6 @@ pub fn is_in(c: u8, content: Vec<u8>) -> bool {
 pub fn get_request_char(http_request: &Box<Vec<u8>>, index: usize) -> u8 {
     match (*http_request).get(index) {
         Some(i) => return *i,
-        None => panic!("Index out of bound"),
+        None => return 0,
     }
 }

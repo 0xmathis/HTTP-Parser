@@ -45,6 +45,9 @@ fn main() {
 
     match result {
         Ok(root) => root.print_as_root(&request_content),
-        Err(e) => println!("{e}"),
+        Err(e) => {
+            eprintln!("{e}");
+            println!("NOK");
+        }
     }
 }
