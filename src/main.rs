@@ -31,10 +31,10 @@ fn main() {
 
     let filepath: &String = args.get(1).unwrap();
     let content: Vec<u8>;
-    let content_length: u8;
+    let content_length: usize;
 
     if let Ok(m) = read_file(filepath) {
-        content_length = m.len() as u8;
+        content_length = m.len();
         content = m;
     } else {
         panic!("File problem");

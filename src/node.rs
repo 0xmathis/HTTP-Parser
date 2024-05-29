@@ -5,13 +5,13 @@ use crate::utils;
 #[derive(PartialEq)]
 pub struct Node {
     label: String,
-    start: u8,
-    length: u8,
+    start: usize,
+    length: usize,
     children: Vec<Self>,
 }
 
 impl Node {
-    pub fn new(label: String, start: u8, length: u8) -> Self {
+    pub fn new(label: String, start: usize, length: usize) -> Self {
         Self {
             label,
             start,
@@ -29,13 +29,13 @@ impl Node {
         }
     }
 
-    pub fn init(&mut self, label: String, start: u8, length: u8) -> () { 
+    pub fn init(&mut self, label: String, start: usize, length: usize) -> () { 
         self.set_label(label);
         self.set_start(start);
         self.set_length(length);
     }
 
-    pub fn add_child(&mut self, label: String, start: u8, length: u8) -> () {
+    pub fn add_child(&mut self, label: String, start: usize, length: usize) -> () {
         let child: Self = Self::new(label, start, length);
         self.children.push(child);
     }
@@ -65,11 +65,11 @@ impl Node {
         self.label = label;
     }
     
-    pub fn set_start(&mut self, start: u8) -> () {
+    pub fn set_start(&mut self, start: usize) -> () {
         self.start = start;
     }
     
-    pub fn set_length(&mut self, length: u8) -> () {
+    pub fn set_length(&mut self, length: usize) -> () {
         self.length = length;
     }
     
@@ -79,11 +79,11 @@ impl Node {
         return &self.label;
     }
 
-    pub fn get_start(&self) -> u8 {
+    pub fn get_start(&self) -> usize {
         return self.start;
     }
 
-    pub fn get_length(&self) -> u8 {
+    pub fn get_length(&self) -> usize {
         return self.length;
     }
 
@@ -111,8 +111,8 @@ impl Node {
         return &mut self.children[len - 1];
     }
 
-    pub fn get_sum_length_children(&self) -> u8 {
-        let mut sum: u8 = 0;
+    pub fn get_sum_length_children(&self) -> usize {
+        let mut sum: usize = 0;
 
         for child in self.children.iter() {
             sum += child.get_length();
