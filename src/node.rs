@@ -10,6 +10,10 @@ pub struct Node {
     children: Vec<Self>,
 }
 
+fn show(bs: &[u8]) -> String {
+    String::from_utf8_lossy(bs).into_owned()
+}
+
 impl Node {
     pub fn new(label: String, start: usize, length: usize) -> Self {
         Self {
@@ -141,7 +145,7 @@ impl Node {
                 if c == b'\r' || c == b'\n' {
                     print!("_");
                 } else {
-                    print!("{}", c as char);
+                    print!("{}", show(&[c]));
                 }
             }
 
@@ -153,7 +157,7 @@ impl Node {
                 if c == b'\r' || c == b'\n' {
                     print!("_");
                 } else {
-                    print!("{}", c as char);
+                    print!("{}", show(&[c]));
                 }
             }
         } else {
@@ -163,7 +167,7 @@ impl Node {
                 if c == b'\r' || c == b'\n' {
                     print!("_");
                 } else {
-                    print!("{}", c as char);
+                    print!("{}", show(&[c]));
                 }
             }
         }
