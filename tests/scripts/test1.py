@@ -20,7 +20,7 @@ class TestHTTP:
         output = os.system(f"./{EMUL_HTTP} {filename}")
 
         if output != 0:
-            pytest.fail("Error")
+            pytest.fail("Error", pytrace=False)
 
 
 pytest.main(sys.argv)

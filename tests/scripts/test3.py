@@ -12,7 +12,11 @@ except ModuleNotFoundError:
 BASE_DIR = os.environ.get("BASE_DIR", ".")
 EMUL_HTTP_ME = os.path.join(BASE_DIR, "bin/httpParser")
 EMUL_HTTP_PROF = os.path.join(BASE_DIR, "bin/httpparser")
-ALL_FILES = glob.glob(os.path.join(BASE_DIR, "../Tests/Only4G33ks/testFile/test*.txt"))
+ALL_FILES = glob.glob(
+        os.path.join(BASE_DIR, "tests/files/premier-jeu-test/get*[!'.out''.me']") + 
+        os.path.join(BASE_DIR, "tests/files/testDemo/test*[!'.out''.me']") + 
+        os.path.join(BASE_DIR, "tests/files/Only4G33ks/testFile/test*[!'.out''.me']")
+        )
 ALL_FILES.sort()
 
 
