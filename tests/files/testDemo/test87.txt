@@ -1,9 +1,0 @@
-n /UD/%B6E*?Vsk HTTP/7.6
-Host:		 				   	 [6DC:2:2::B:3:252.44.214.3]			 
-Host:  	  	  :		
-Host:	224.98.1.69
-Transfer-Encoding:	U;			  +HoR	=    			 	 	""	;  		XdbDcB	     	 	= 		""	, z'Vt1l.8qnVfcIlY;&2%7 ="\á\¥="	;^c=	 "\ú\£ "		 	 		;!DVgJ="\è" 		 	  ,D0BzA 
-nQ.:				 	’ï  	‚	  		 		
-Transfer-Encoding:,		chunked, 		 	YqU	 				 ; ^	  ="¼Ùö\0"		  	,	,
-Host:    229.16.6.99 
-

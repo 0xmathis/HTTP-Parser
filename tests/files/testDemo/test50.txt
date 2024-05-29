@@ -1,5 +1,0 @@
-bgNEcI| /t4%29/%ACm_?JO HTTP/5.1
-Host:	  [B5:2:CF3E::]:62578 		
-Connection: 	  	,,,   ,	 Z,,  ,  	,	 
-Host:		[::CB5:855]:3		    			   
-

@@ -1,3 +1,0 @@
-TYA8CT*b /!P/?p/%49v3I/S HTTP/1.2
-Transfer-Encoding:	 ,deflate	
-
