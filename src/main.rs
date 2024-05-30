@@ -10,7 +10,20 @@ use node::Node;
 use std::env;
 use std::fs::File;
 use std::io::{Read, Error};
+use clap::Parser;
 
+// https://blog.logrocket.com/command-line-argument-parsing-rust-using-clap/
+/// HTTP Parser
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+    /// File to parse
+    filepath: String,
+
+    /// Store to JSON
+    #[arg(long)]
+    json: Option<String>,
+}
 
 // TODO: Enable user to store parsing tree in JSON file
 
@@ -23,6 +36,7 @@ fn read_file(filepath: &str) -> Result<Vec<u8>, Error> {
 }
 
 fn main() {
+    let args = Args::parse();
     let args: Vec<String> = env::args().collect();
 
     if args.len() != 2 {
