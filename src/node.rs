@@ -1,4 +1,5 @@
 use crate::utils;
+use std::io::{stdout, Write};
 
 #[derive(Debug)]
 #[derive(Clone)]
@@ -8,10 +9,6 @@ pub struct Node {
     start: usize,
     length: usize,
     children: Vec<Self>,
-}
-
-fn show(bs: &[u8]) -> String {
-    String::from_utf8_lossy(bs).into_owned()
 }
 
 impl Node {
@@ -60,7 +57,9 @@ impl Node {
     }
 
     pub fn del_last_child(&mut self) -> () {
-        self.get_mut_children().pop().unwrap().del();
+        if self.get_children().len() > 0 {
+            self.get_mut_children().pop().unwrap().del();
+        }
     }
 
     // Setters
@@ -99,12 +98,12 @@ impl Node {
         return &mut self.children;
     }
 
-    pub fn get_mut_child(&mut self) -> &mut Vec<Self> {
-        return &mut self.children;
-    }
-
     pub fn get_last_child(&self) -> &Self {
         let len: usize = self.children.len();
+
+        if len == 0 {
+            panic!("No child found");
+        }
 
         return &self.children[len - 1];
     }
@@ -123,6 +122,16 @@ impl Node {
         }
 
         sum
+    }
+
+    pub fn get_length_last_child(&self) -> usize {
+        let len: usize = self.children.len();
+
+        if len == 0 {
+            return 0;
+        }
+
+        return self.children[len - 1].get_length();
     }
 
     pub fn print_as_root(&self, request_content: &Box<Vec<u8>>) -> () {
@@ -145,7 +154,7 @@ impl Node {
                 if c == b'\r' || c == b'\n' {
                     print!("_");
                 } else {
-                    print!("{}", show(&[c]));
+                    let _ = stdout().write(&[c]);
                 }
             }
 
@@ -157,7 +166,7 @@ impl Node {
                 if c == b'\r' || c == b'\n' {
                     print!("_");
                 } else {
-                    print!("{}", show(&[c]));
+                    let _ = stdout().write(&[c]);
                 }
             }
         } else {
@@ -167,7 +176,7 @@ impl Node {
                 if c == b'\r' || c == b'\n' {
                     print!("_");
                 } else {
-                    print!("{}", show(&[c]));
+                    let _ = stdout().write(&[c]);
                 }
             }
         }
@@ -179,4 +188,3 @@ impl Node {
         }
     }
 }
-

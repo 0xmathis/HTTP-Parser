@@ -38,7 +38,7 @@ class TestHTTP:
 
         for i in range(min(len(a), len(b))):
             if a[i] != b[i]:
-                pytest.fail(f"Error line {i}\n.me  : \"{a[i]}\"\n.out : \"{b[i]}\"", pytrace=False)
+                pytest.fail(f"Error line {i}\n.me  : {a[i]}\n.out : {b[i]}", pytrace=False)
 
         if len(a) != len(b):
             pytest.fail(f"Longueurs différentes\n.me  : {len(a)}\n.out : {len(b)}", pytrace=False)
