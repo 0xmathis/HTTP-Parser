@@ -36,6 +36,14 @@ impl Node {
         self.set_length(length);
     }
 
+    pub fn add_get_mut_child(&mut self, label: String, start: usize, length: usize) -> &mut Self {
+        self.add_empty_child();
+        let node: &mut Node = self.get_mut_last_child();
+        node.init(label, start, length);
+
+        return node;
+    }
+
     pub fn add_child(&mut self, label: String, start: usize, length: usize) -> () {
         let child: Self = Self::new(label, start, length);
         self.children.push(child);
@@ -74,6 +82,10 @@ impl Node {
     
     pub fn set_length(&mut self, length: usize) -> () {
         self.length = length;
+    }
+
+    pub fn update_length(&mut self) -> () {
+        self.set_length(self.get_sum_length_children());
     }
     
     // Getters

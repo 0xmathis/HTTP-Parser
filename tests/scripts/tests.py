@@ -1,13 +1,9 @@
 import glob
 import os
+import pytest
 import subprocess
 import sys
 
-try:
-    import pytest
-except ModuleNotFoundError:
-    os.system("python3 -m pip install pytest")
-    import pytest
 
 BASE_DIR = os.environ.get("BASE_DIR", ".")
 EMUL_HTTP_VALID = os.path.join(BASE_DIR, "bin/httpparser")
