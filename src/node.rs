@@ -1,3 +1,5 @@
+use serde_json::{json, Value};
+
 use crate::utils;
 use std::io::{stdout, Write};
 
@@ -198,5 +200,24 @@ impl Node {
         for child in self.children.iter() {
             child.print(request_content, depth + 1)
         }
+    }
+
+    pub fn dump_to_json(&self, request_content: &Box<Vec<u8>>) -> Value {
+        let children: &Vec<Self> = self.get_children();
+
+        if children.len() == 0 {
+            let start: usize = self.get_start();
+            let end: usize = start + self.get_length();
+
+            return json!({"label": self.get_label(), "values": request_content.get(start..end)});
+        }
+
+        let mut children_values: Vec<Value> = Vec::new();
+
+        for child in children.iter() {
+            children_values.push(child.dump_to_json(request_content))
+        }
+
+        json!({"label": self.get_label(), "children": children_values})
     }
 }
